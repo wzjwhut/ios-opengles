@@ -21,16 +21,12 @@
     //hardware encoder
     dispatch_queue_t aQueue;
     CMFormatDescriptionRef  format;
-    int width;
-    int height;
-    BOOL gotSPSPPS;
-    NSString* error;
-    BOOL skipFlag;
-    BOOL stopped;
+    BOOL hasCamera;
 }
 
 @property (weak, nonatomic) IBOutlet GLKView *glView;
 @property (weak, nonatomic) IBOutlet UIView *cameraView;
+@property (weak, nonatomic) IBOutlet UIButton *startButton;
 
 @end
 
@@ -43,7 +39,7 @@
     [self initGLView];
     
     /** 模拟器上会初化失败 */
-    [self initCamera];
+    self->hasCamera = [self initCamera];
 }
 
 -(void) initGLView
@@ -69,10 +65,21 @@
         return;
     }
     
-    GLrgb* rgb = [[GLrgb alloc] initWith:&rect];
-    uint8_t* data = malloc(100*100*3);
-    memset(data, 255, 100*100*3);
-    [rgb drawRGB:data width:100 height:100];
+    if(self->hasCamera){
+        
+        
+    }else{
+        /* 如果没有摄像头，则画一帧rgb数据 */
+        GLrgb* rgb = [[GLrgb alloc] initWith:&rect];
+        uint8_t* data = malloc(100*100*3);
+        for(int i=0; i<100*100*3; i+=3){
+            data[i] = 0;
+            data[i+1] = 255;
+            data[i+2] = 0;
+        }
+        
+        [rgb drawRGB:data width:100 height:100];
+    }
 }
 
 - (BOOL) initCamera{

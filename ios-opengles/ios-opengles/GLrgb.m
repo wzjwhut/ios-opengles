@@ -25,8 +25,10 @@ static const char gFragmentShader[] = {
     "#ifdef GL_ES\n"
     "precision mediump float; \n"
     "#endif\n"
+    "varying vec2 textureOut;\n"
+    "uniform sampler2D samplers[1];\n"
     "void main(void) {\n"
-    "    gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0); \n"
+    "    gl_FragColor = texture2D(samplers[0], textureOut); \n"
     "}\n"
 };
 
@@ -122,6 +124,11 @@ static int initTexture(priv_data_t* r, int textureWidth, int linesize, int textu
     checkGlError("glEnableVertexAttribArray textureHandle");
     
     glUseProgram(r->gProgram);
+    
+    int i = glGetUniformLocation(r->gProgram, "samplers");
+    checkGlError("glGetUniformLocation");
+    glUniform1i(i, 0); /* Bind Vtex to texture unit 2 */
+    checkGlError("glUniform1i");
 
     glGenTextures(1, r->gTextureIds); //Generate  the Y, U and V texture
     return 0;
@@ -148,9 +155,12 @@ static GLuint loadShader(GLenum shaderType, const char* pSource) {
         GLint compiled = 0;
         glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
         if (!compiled) {
+            NSLog(@"ERROR2");
+            checkGlError("glGetShaderiv");
             GLint infoLen = 0;
             glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLen);
             if (infoLen) {
+                checkGlError("glGetShaderiv");
                 char* buf = (char*) malloc(infoLen);
                 if (buf) {
                     glGetShaderInfoLog(shader, infoLen, NULL, buf);
@@ -160,6 +170,9 @@ static GLuint loadShader(GLenum shaderType, const char* pSource) {
                 shader = 0;
             }
         }
+    }else{
+        NSLog(@"ERROR1");
+        checkGlError("glCreateShader");
     }
     return shader;
 }
@@ -236,7 +249,7 @@ static void gl_draw(priv_data_t* r,
     glBindTexture(GL_TEXTURE_2D, r->gTextureIds[0]);
     checkGlError("glBindTexture");
     NSLog(@"glTexImage2D: %d, %d", width, height);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, r->rgb_data);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, rgb);
     checkGlError("glTexImage2D");
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     checkGlError("glDrawArrays");
