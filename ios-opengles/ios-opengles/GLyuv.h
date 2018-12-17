@@ -7,7 +7,10 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <GLKit/GLKit.h>
 
 @interface GLyuv : NSObject
-
+-(instancetype) initWith: (CGRect) rect;
+-(void) dealloc;
+-(void) drawYUV: (uint8_t*) yuv width: (int) width height: (int) height;
 @end

@@ -26,9 +26,9 @@ static const char gFragmentShader[] = {
     "precision mediump float; \n"
     "#endif\n"
     "varying vec2 textureOut;\n"
-    "uniform sampler2D samplers[1];\n"
+    "uniform sampler2D sampler;\n"
     "void main(void) {\n"
-    "    gl_FragColor = texture2D(samplers[0], textureOut); \n"
+    "    gl_FragColor = texture2D(sampler, textureOut); \n"
     "}\n"
 };
 
@@ -51,11 +51,12 @@ static const GLfloat gTextureVertices_0[] = {
 /** 为了和其它版本的代码保持统一，所以仍然使用C风格的代码 */
 
 typedef struct priv_data_t{
-    int _win_width;
-    int _win_height;
-    uint8_t* rgb_data;
+    int win_width;
+    int win_height;
     GLuint gTextureIds[1];
     GLuint gProgram;
+    GLuint vertexShader;
+    GLuint pixelShader;
     GLfloat mTextureVertices[8];
     GLfloat mVertexVertices[8];
     int texture_inited;
@@ -68,10 +69,26 @@ typedef struct priv_data_t{
 @end
 
 static void checkGlError(const char* op);
-static GLuint createProgram(const char* pVertexSource, const char* pFragmentSource) ;
+static GLuint createProgram(GLuint vertexSource, GLuint fragmentSource) ;
+static GLuint loadShader(GLenum shaderType, const char* pSource);
 
 static int initTexture(priv_data_t* r, int textureWidth, int linesize, int textureHeight){
-    r->gProgram = createProgram(gVertexShader, gFragmentShader);
+    GLuint vertexShader = loadShader(GL_VERTEX_SHADER, gVertexShader);
+    if (!vertexShader) {
+        NSLog(@"create vertex shader failed");
+        return 0;
+    }
+    
+    GLuint pixelShader = loadShader(GL_FRAGMENT_SHADER, gFragmentShader);
+    if (!pixelShader) {
+        NSLog(@"create pixel shader failed");
+        glDeleteShader(vertexShader);
+        return 0;
+    }
+    r->vertexShader = vertexShader;
+    r->pixelShader = pixelShader;
+    
+    r->gProgram = createProgram(vertexShader, pixelShader);
     if (!r->gProgram) {
         return -1;
     }
@@ -94,8 +111,8 @@ static int initTexture(priv_data_t* r, int textureWidth, int linesize, int textu
     vw = textureWidth;
     vh = textureHeight;
     float clipH, clipW;
-    int x1 = vw*r->_win_height;
-    int x2 = vh*r->_win_width;
+    int x1 = vw*r->win_height;
+    int x2 = vh*r->win_width;
     
     if (x1>x2) {
         clipH = x2/(float)x1;
@@ -125,7 +142,7 @@ static int initTexture(priv_data_t* r, int textureWidth, int linesize, int textu
     
     glUseProgram(r->gProgram);
     
-    int i = glGetUniformLocation(r->gProgram, "samplers");
+    int i = glGetUniformLocation(r->gProgram, "sampler");
     checkGlError("glGetUniformLocation");
     glUniform1i(i, 0); /* Bind Vtex to texture unit 2 */
     checkGlError("glUniform1i");
@@ -177,26 +194,14 @@ static GLuint loadShader(GLenum shaderType, const char* pSource) {
     return shader;
 }
 
-static GLuint createProgram(const char* pVertexSource, const char* pFragmentSource) {
-    GLuint vertexShader = loadShader(GL_VERTEX_SHADER, pVertexSource);
-    if (!vertexShader) {
-        NSLog(@"create vertex shader failed");
-        return 0;
-    }
-    
-    GLuint pixelShader = loadShader(GL_FRAGMENT_SHADER, pFragmentSource);
-    if (!pixelShader) {
-        NSLog(@"create pixel shader failed");
-        glDeleteShader(vertexShader);
-        return 0;
-    }
-    
+static GLuint createProgram(GLuint vertexShader, GLuint pixelShader) {
     GLuint program = glCreateProgram();
+    NSLog(@"program: %d, %d, %d", program, vertexShader, pixelShader);
     if (program) {
         glAttachShader(program, vertexShader);
-        checkGlError("glAttachShader");
+        checkGlError("glAttachShader vertex");
         glAttachShader(program, pixelShader);
-        checkGlError("glAttachShader");
+        checkGlError("glAttachShader pixel");
         glLinkProgram(program);
         GLint linkStatus = GL_FALSE;
         glGetProgramiv(program, GL_LINK_STATUS, &linkStatus);
@@ -211,8 +216,6 @@ static GLuint createProgram(const char* pVertexSource, const char* pFragmentSour
                     free(buf);
                 }
             }
-            glDeleteShader(vertexShader);
-            glDeleteShader(pixelShader);
             glDeleteProgram(program);
             program = 0;
         }
@@ -220,7 +223,7 @@ static GLuint createProgram(const char* pVertexSource, const char* pFragmentSour
     return program;
 }
 
-static void InitializeTexture(int name, int id) {
+static void bindTexture(int name, int id) {
     glActiveTexture(name);
     glBindTexture(GL_TEXTURE_2D, id);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -234,20 +237,21 @@ static void gl_draw(priv_data_t* r,
                     uint8_t* rgb,
                     int width, int height){
     if(!r->texture_inited){
-        NSLog(@"init texture, %d, %d", r->_win_width, r->_win_height);
-        glViewport(0, 0, r->_win_width, r->_win_height);
+        NSLog(@"init texture, %d, %d", r->win_width, r->win_height);
+        glViewport(0, 0, r->win_width, r->win_height);
         initTexture(r, width,  width,  height);
-        InitializeTexture(GL_TEXTURE0, r->gTextureIds[0]);
+        bindTexture(GL_TEXTURE0, r->gTextureIds[0]);
         checkGlError("glClear");
         
         glUseProgram(r->gProgram);
         checkGlError("glUseProgram");
+        
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, r->gTextureIds[0]);
+        checkGlError("glBindTexture");
         r->texture_inited = TRUE;
     }
-    glActiveTexture(GL_TEXTURE0);
-    
-    glBindTexture(GL_TEXTURE_2D, r->gTextureIds[0]);
-    checkGlError("glBindTexture");
+
     NSLog(@"glTexImage2D: %d, %d", width, height);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, rgb);
     checkGlError("glTexImage2D");
@@ -256,13 +260,23 @@ static void gl_draw(priv_data_t* r,
 }
 
 
-
 static void release_gl_resources(priv_data_t* r){
+    if(r->vertexShader != 0){
+        glDeleteShader(r->vertexShader);
+        r->vertexShader = 0;
+    }
+    
+    if(r->pixelShader != 0){
+        glDeleteShader(r->pixelShader);
+        r->pixelShader = 0;
+    }
+    
     if (r->gProgram != 0) {
         glDeleteProgram(r->gProgram);
         r->gProgram = 0;
     }
     if (r->gTextureIds[0] != 0) {
+        NSLog(@"release texture");
         glDeleteTextures(3, r->gTextureIds);
         r->gTextureIds[0] = 0;
     }
@@ -271,13 +285,20 @@ static void release_gl_resources(priv_data_t* r){
 
 @implementation GLrgb
 
--(instancetype) initWith:( CGRect*) rect
+-(instancetype) initWith:(CGRect) rect
 {
-    NSLog(@"init GLrgb, %f, %f", rect->size.width, rect->size.height);
-    self->priv._win_width = rect->size.width;
-    self->priv._win_height = rect->size.height;
+    NSLog(@"init GLrgb, %f, %f", rect.size.width, rect.size.height);
+    self->priv.win_width = rect.size.width;
+    self->priv.win_height = rect.size.height;
     return self;
 }
+-(void) dealloc
+{
+    [super dealloc];
+    NSLog(@"dealloc");
+    release_gl_resources(&self->priv);
+}
+
 
 
 -(void) drawRGB: (uint8_t*) rgb_data width: (int) width height: (int) height

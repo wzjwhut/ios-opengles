@@ -9,24 +9,20 @@
 #import "ViewController.h"
 #import <pthread.h>
 #import "GLrgb.h"
+#import "GLyuv.h"
 
 
 @interface ViewController ()
 {
-    //camera interface
-    AVCaptureSession *captureSession;
-    AVCaptureVideoPreviewLayer *previewLayer;
-    AVCaptureConnection* captureConnection;
-    
-    //hardware encoder
-    dispatch_queue_t aQueue;
-    CMFormatDescriptionRef  format;
-    BOOL hasCamera;
+    GLrgb* rgbGL;
+    GLyuv* yuvGL;
 }
+@property (weak, nonatomic) IBOutlet GLKView *rgbView;
+@property (weak, nonatomic) IBOutlet GLKView *yuvView;
 
-@property (weak, nonatomic) IBOutlet GLKView *glView;
-@property (weak, nonatomic) IBOutlet UIView *cameraView;
-@property (weak, nonatomic) IBOutlet UIButton *startButton;
+- (IBAction)freshRGB:(id)sender;
+- (IBAction)freshYUV:(id)sender;
+
 
 @end
 
@@ -35,21 +31,23 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-
     [self initGLView];
-    
-    /** 模拟器上会初化失败 */
-    self->hasCamera = [self initCamera];
 }
 
 -(void) initGLView
 {
     /** init gl view */
-    _glView.contentScaleFactor = 1.0;
-    _glView.context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
-    [EAGLContext setCurrentContext:_glView.context];
-    _glView.delegate = self;
-    _glView.enableSetNeedsDisplay  = YES;
+    _rgbView.contentScaleFactor = 1.0;
+    _rgbView.context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
+    [EAGLContext setCurrentContext:_rgbView.context];
+    _rgbView.delegate = self;
+    _rgbView.enableSetNeedsDisplay  = YES;
+    
+    _yuvView.contentScaleFactor = 1.0;
+    _yuvView.context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
+    [EAGLContext setCurrentContext:_yuvView.context];
+    _yuvView.delegate = self;
+    _yuvView.enableSetNeedsDisplay  = YES;
 }
 
 /** GLKView执行绘图的接口 */
@@ -57,112 +55,49 @@
 {
     glClearColor(0.0, 0.0, 1.0, 1);
     glClear( GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-    
 
-    int w = rect.size.width;
-    int h = rect.size.height;
-    if(w == 0 || h == 0){
-        return;
-    }
-    
-    if(self->hasCamera){
-        
-        
-    }else{
-        /* 如果没有摄像头，则画一帧rgb数据 */
-        GLrgb* rgb = [[GLrgb alloc] initWith:&rect];
-        uint8_t* data = malloc(100*100*3);
-        for(int i=0; i<100*100*3; i+=3){
-            data[i] = 0;
-            data[i+1] = 255;
-            data[i+2] = 0;
+    /* 画一帧rgb数据 */
+    if( view == _rgbView){
+        if(rgbGL == nil){
+            rgbGL = [[GLrgb alloc] initWith:rect];
         }
-        
-        [rgb drawRGB:data width:100 height:100];
+        int r = rand()%256;
+        int g = rand()%256;
+        int b = rand()%256;
+        int w = 128;
+        int h = 128;
+        uint8_t* data = malloc(w*h*3);
+        for(int i=0; i<w*h*3; i+=3){
+            data[i] = r;
+            data[i+1] = g;
+            data[i+2] = b;
+        }
+        [rgbGL drawRGB:data width:w height:h];
+        free(data);
+    }else if(view == _yuvView){
+        if(yuvGL == nil){
+            yuvGL = [[GLyuv alloc] initWith:rect];
+        }
+        const int w = 128;
+        const int h = 128;
+        const int totalSize = w*h*3/2;
+        uint8_t* data = (uint8_t*)malloc(totalSize);
+        memset(data, rand()%200 + 16, totalSize);
+        [yuvGL drawYUV:data width:w height:h];
+        free(data);
     }
 }
-
-- (BOOL) initCamera{
-    NSError *deviceError;
-    
-    AVCaptureDevice *cameraDevice = [self cameraWithPosition:AVCaptureDevicePositionFront];
-    if(cameraDevice == nil){
-        cameraDevice = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
-    }
-    
-    AVCaptureDeviceInput *inputDevice = [AVCaptureDeviceInput deviceInputWithDevice:cameraDevice error:&deviceError];
-    if(inputDevice == nil){
-        NSLog(@"init input camera Device failed");
-        return false;
-    }
-    
-    
-    // make output device
-    
-    AVCaptureVideoDataOutput *outputDevice = [[AVCaptureVideoDataOutput alloc] init];
-    
-    NSString* key = (NSString*)kCVPixelBufferPixelFormatTypeKey;
-    
-    NSNumber* val = [NSNumber
-                     numberWithUnsignedInt:kCVPixelFormatType_420YpCbCr8BiPlanarFullRange];
-    NSDictionary* videoSettings =
-    [NSDictionary dictionaryWithObject:val forKey:key];
-    outputDevice.videoSettings = videoSettings;
-    
-    [outputDevice setSampleBufferDelegate:self queue:dispatch_get_main_queue()];
-    
-    captureSession = [[AVCaptureSession alloc] init];
-    [captureSession addInput:inputDevice];
-    [captureSession addOutput:outputDevice];
-    
-    // begin configuration for the AVCaptureSession
-    [captureSession beginConfiguration];
-    
-    // picture resolution
-    [captureSession setSessionPreset:[NSString stringWithString:AVCaptureSessionPreset640x480]];
-    
-    captureConnection = [outputDevice connectionWithMediaType:AVMediaTypeVideo];
-    captureConnection.videoOrientation = AVCaptureVideoOrientationPortrait;
-    
-    NSNotificationCenter* notify = [NSNotificationCenter defaultCenter];
-    
-    [notify addObserver:self
-               selector:@selector(statusBarOrientationDidChange:)
-                   name:@"StatusBarOrientationDidChange"
-                 object:nil];
-    
-    
-    [captureSession commitConfiguration];
-    
-    // make preview layer and add so that camera's view is displayed on screen
-    
-    previewLayer = [AVCaptureVideoPreviewLayer    layerWithSession:captureSession];
-    [previewLayer setVideoGravity:AVLayerVideoGravityResizeAspect];
-    
-    CALayer *rootLayer = [_cameraView layer];
-    [rootLayer setMasksToBounds:YES];
-    [previewLayer setFrame:[rootLayer bounds]];
-    [rootLayer addSublayer:previewLayer];
-    return true;
-}
-
-- (AVCaptureDevice *)cameraWithPosition : (AVCaptureDevicePosition) position
-{
-    NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
-    for (AVCaptureDevice *device in devices )
-        if ( device.position == position )
-            return device;
-    
-    return nil ;
-}
-
-- (void)statusBarOrientationDidChange:(NSNotification*)notification {
-}
-
 
 
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
 }
 
+- (IBAction)freshRGB:(id)sender {
+    [_rgbView display];
+}
+
+- (IBAction)freshYUV:(id)sender {
+    [_yuvView display];
+}
 @end

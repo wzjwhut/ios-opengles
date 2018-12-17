@@ -10,8 +10,7 @@
 #import <GLKit/GLKit.h>
 @import AVFoundation;
 
-@interface ViewController : UIViewController<GLKViewDelegate,
-     AVCaptureVideoDataOutputSampleBufferDelegate>
+@interface ViewController : UIViewController<GLKViewDelegate>
 
 
 @end

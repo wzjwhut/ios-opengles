@@ -10,10 +10,7 @@
 #import <GLKit/GLKit.h>
 
 @interface GLrgb : NSObject
-
-@property int rectWidth;
-@property int rectHeight;
-
--(instancetype) initWith: (CGRect*) __weak rect;
+-(instancetype) initWith: (CGRect) rect;
+-(void) dealloc;
 -(void) drawRGB: (uint8_t*) rgb_data width: (int) width height: (int) height;
 @end
