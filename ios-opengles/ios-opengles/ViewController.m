@@ -10,12 +10,17 @@
 #import <pthread.h>
 #import "GLrgb.h"
 #import "GLyuv.h"
+#import "ImageUtil.h"
 
 
 @interface ViewController ()
 {
     GLrgb* rgbGL;
     GLyuv* yuvGL;
+    uint8_t* yuv;
+    uint8_t* rgb;
+    int width;
+    int height;
 }
 @property (weak, nonatomic) IBOutlet GLKView *rgbView;
 @property (weak, nonatomic) IBOutlet GLKView *yuvView;
@@ -31,7 +36,18 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    
+    UIImage* image = [UIImage imageNamed:@"1.jpg"];
+    width =  image.size.width;
+    height = image.size.height;
+    rgb = [ImageUtil rgbArray:image];
+    yuv = [ImageUtil yuvArray:rgb width:width height:height];
     [self initGLView];
+}
+
+- (void)dealloc
+{
+    
 }
 
 -(void) initGLView
@@ -48,6 +64,7 @@
     [EAGLContext setCurrentContext:_yuvView.context];
     _yuvView.delegate = self;
     _yuvView.enableSetNeedsDisplay  = YES;
+    
 }
 
 /** GLKView执行绘图的接口 */
@@ -55,36 +72,18 @@
 {
     glClearColor(0.0, 0.0, 1.0, 1);
     glClear( GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-
+    
     /* 画一帧rgb数据 */
     if( view == _rgbView){
         if(rgbGL == nil){
             rgbGL = [[GLrgb alloc] initWith:rect];
         }
-        int r = rand()%256;
-        int g = rand()%256;
-        int b = rand()%256;
-        int w = 128;
-        int h = 128;
-        uint8_t* data = malloc(w*h*3);
-        for(int i=0; i<w*h*3; i+=3){
-            data[i] = r;
-            data[i+1] = g;
-            data[i+2] = b;
-        }
-        [rgbGL drawRGB:data width:w height:h];
-        free(data);
+        [rgbGL drawRGB:rgb width:width height:height];
     }else if(view == _yuvView){
         if(yuvGL == nil){
             yuvGL = [[GLyuv alloc] initWith:rect];
         }
-        const int w = 128;
-        const int h = 128;
-        const int totalSize = w*h*3/2;
-        uint8_t* data = (uint8_t*)malloc(totalSize);
-        memset(data, rand()%200 + 16, totalSize);
-        [yuvGL drawYUV:data width:w height:h];
-        free(data);
+        [yuvGL drawYUV:yuv width:width height:height];
     }
 }
 

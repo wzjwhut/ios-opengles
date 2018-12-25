@@ -33,6 +33,8 @@
 		1199EEC321C64C7E002EE01B /* GLyuv.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = GLyuv.m; sourceTree = "<group>"; };
 		1199EEC521C663B8002EE01B /* GLrgb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GLrgb.h; sourceTree = "<group>"; };
 		1199EEC621C663B8002EE01B /* GLrgb.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = GLrgb.m; sourceTree = "<group>"; };
+		11ABEC6F21D2210D00EE35D3 /* rgb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = rgb.h; sourceTree = "<group>"; };
+		11C8A5FF21D24595007DD9A0 /* ImageUtil.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ImageUtil.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -65,6 +67,7 @@
 		1199EEAA21C63948002EE01B /* ios-opengles */ = {
 			isa = PBXGroup;
 			children = (
+				11C8A5FF21D24595007DD9A0 /* ImageUtil.h */,
 				1199EEC121C64BD5002EE01B /* opengles_adapter.h */,
 				1199EEAB21C63948002EE01B /* AppDelegate.h */,
 				1199EEAC21C63948002EE01B /* AppDelegate.m */,
@@ -79,6 +82,7 @@
 				1199EEC321C64C7E002EE01B /* GLyuv.m */,
 				1199EEC521C663B8002EE01B /* GLrgb.h */,
 				1199EEC621C663B8002EE01B /* GLrgb.m */,
+				11ABEC6F21D2210D00EE35D3 /* rgb.h */,
 			);
 			path = "ios-opengles";
 			sourceTree = "<group>";

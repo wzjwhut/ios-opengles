@@ -21,9 +21,8 @@ static const char gVertexShader[] = {
     "}                           \n"
 };
 
-// The fragment shader.
-// Do YUV to RGB565 conversion.
-static const char gFragmentShader[] = {
+
+static const char gFragmentShader1[] = {
     "#ifdef GL_ES\n"
     "precision mediump int;\n"
     "precision mediump float;\n"
@@ -44,6 +43,30 @@ static const char gFragmentShader[] = {
     "    gl_FragColor = vec4(rgb, 1.0);\n"
     "}\n"
 };
+
+static const char gFragmentShader[] = {
+    "#ifdef GL_ES\n"
+    "precision mediump int;\n"
+    "precision mediump float;\n"
+    "#endif\n"
+    "varying vec2 textureOut;\n"
+    "uniform sampler2D tex_y;\n"
+    "uniform sampler2D tex_u;\n"
+    "uniform sampler2D tex_v;\n"
+    "void main(void) {\n"
+    "    float y,u,v,r,g,b;\n"
+    "    y = texture2D(tex_y, textureOut).r;\n"
+    "    u = texture2D(tex_u, textureOut).r - 0.5;\n"
+    "    v = texture2D(tex_v, textureOut).r - 0.5;\n"
+    "    y=1.1643*(y-0.0625);\n"
+    "    r=y+1.5958*v;\n"
+    "    g=y-0.39173*u-0.81290*v;\n"
+    "    b=y+2.017*u;\n"
+    "  gl_FragColor=vec4(r,g,b,1.0);\n"
+"}\n"
+};
+
+
 
 
 
