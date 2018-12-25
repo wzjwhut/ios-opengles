@@ -70,7 +70,7 @@
 /** GLKView执行绘图的接口 */
 - (void)glkView:(GLKView *)view drawInRect:(CGRect)rect
 {
-    glClearColor(0.0, 0.0, 1.0, 1);
+    glClearColor(0.0, 0.0, 0.0, 1);
     glClear( GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
     
     /* 画一帧rgb数据 */
